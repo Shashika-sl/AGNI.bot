@@ -20,30 +20,36 @@ async (conn, mek, m, { from, q, reply }) => {
         let video = search.videos[0];
         if (!video) return reply("❌ Sorry, I couldn't find that song!");
 
-        // make sure temp folder exists
-        let tempDir = path.join(__dirname, "../temp");
-        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
+        // ✅ make sure temp folder exists
+        const tempDir = path.join(__dirname, "../temp");
+        if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
+            console.log("✅ Temp folder created:", tempDir);
+        }
 
         let filePath = path.join(tempDir, `${Date.now()}.mp3`);
 
-        // Download audio
+        // ✅ Download audio
         const stream = ytdl(video.url, { filter: "audioonly", quality: "highestaudio" })
             .pipe(fs.createWriteStream(filePath));
 
         stream.on("close", async () => {
             try {
+                // send audio file
                 await conn.sendMessage(from, {
                     audio: fs.readFileSync(filePath),
                     mimetype: "audio/mpeg",
                     fileName: `${video.title}.mp3`,
                 }, { quoted: mek });
 
+                // send info text
                 await conn.sendMessage(from, {
                     text: `🎶 *${video.title}*\n📺 Channel: ${video.author.name}\n⏱️ Duration: ${video.timestamp}\n👀 Views: ${video.views.toLocaleString()}`
                 }, { quoted: mek });
 
             } finally {
-                fs.unlinkSync(filePath); // cleanup temp
+                // cleanup temp file
+                fs.unlinkSync(filePath);
             }
         });
 
